@@ -8,12 +8,10 @@ pub struct DeviceInfo {
 }
 
 /// Get the necessary information from the remote device
-pub fn get_device_info(
-    ip: &std::net::IpAddr,
-    port: u16,
-) -> Result<DeviceInfo, Box<dyn std::error::Error>> {
-    let url = format!("http://{ip}:{port}/SpotifyConnect?action=getInfo");
-    let response = minreq::get(url).send()?;
+pub fn get_device_info(base_url: &str) -> Result<DeviceInfo, Box<dyn std::error::Error>> {
+    let response = minreq::get(base_url)
+        .with_param("action", "getInfo")
+        .send()?;
     let v: Value = serde_json::from_str(response.as_str()?)?;
 
     let device_id = v["deviceID"]
@@ -38,14 +36,12 @@ pub fn get_device_info(
 
 /// Authenticate on the remote device thanks to the encrypted blob
 pub fn add_user(
-    ip: &std::net::IpAddr,
-    port: u16,
+    base_url: &str,
     username: &str,
     encrypted_blob: &str,
     my_public_key: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let url = format!("http://{ip}:{port}/SpotifyConnect");
-    let response = minreq::post(url)
+    let response = minreq::post(base_url)
         .with_header("Content-Type", "application/x-www-form-urlencoded")
         .with_param("action", "addUser")
         .with_param("userName", username)

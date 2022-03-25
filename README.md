@@ -20,10 +20,16 @@ cargo install --path .
 
 ## Usage
 
-Automatic discovery of devices is not implemented yet. You have to find the `IP` address of your receiver and the `PORT` Spotify Connect is listening to by yourself. Tools like `nmap` or `avahi` could be useful.
+```shell
+spotify-connect <IP> <PORT> [PATH]
+```
+
+Automatic discovery of devices is not implemented yet. You have to find the `IP` address of your receiver, the `PORT` Spotify Connect is listening to and, optionally, the `PATH` to the ZeroConf API on the device web server. The `PATH` should always start with a `/` character.
+
+The following `avahi` command should provide everything needed:
 
 ```shell
-spotify-connect <IP> <PORT>
+avahi-browse --resolve _spotify-connect._tcp
 ```
 
 If it is the first time you use `spotify-connect`, your Spotify credentials will be asked (username/password). Reusable credentials will be automatically cached for future `spotify-connect` calls. On Linux, the credentials should be cached in `$HOME/.cache/spotify-connect/credentials.json`.

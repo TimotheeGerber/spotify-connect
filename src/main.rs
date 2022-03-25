@@ -14,11 +14,16 @@ struct Args {
 
     /// Port on which the remote device is listening
     port: u16,
+
+    /// Path to the ZeroConf API on the device web server
+    #[clap(default_value = "/")]
+    path: String,
 }
 
 fn main() {
     // Parse arguments
     let args = Args::parse();
+    let base_url = format!("http://{}:{}{}", args.ip, args.port, args.path);
 
     // Get credentials from the cache
     let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
@@ -37,12 +42,8 @@ fn main() {
     };
 
     // Get device information
-    let device_info = net::get_device_info(&args.ip, args.port).unwrap_or_else(|_| {
-        panic!(
-            "Impossible to get device information from {}:{}",
-            args.ip, args.port
-        )
-    });
+    let device_info = net::get_device_info(&base_url)
+        .unwrap_or_else(|_| panic!("Impossible to get device information from {base_url}"));
     println!("Found `{}`. Trying to connect...", device_info.remote_name);
 
     // Generate the blob
@@ -56,8 +57,7 @@ fn main() {
     // Send the blob
     let my_public_key = base64::encode(local_keys.public_key());
     net::add_user(
-        &args.ip,
-        args.port,
+        &base_url,
         &credentials.username,
         &encrypted_blob,
         &my_public_key,
