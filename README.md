@@ -34,7 +34,7 @@ avahi-browse --resolve _spotify-connect._tcp
 
 If it is the first time you use `spotify-connect`, your Spotify credentials will be asked (username/password). Reusable credentials will be automatically cached for future `spotify-connect` calls. On Linux, the credentials should be cached in `$HOME/.cache/spotify-connect/credentials.json`.
 
-> Reusable credentials are provided by Spotify and are encrypted. Your password is not stored as plain text. However, you can set the permissions of the cache directory to `701` to improve security.
+> Reusable credentials are provided by Spotify and are encrypted. Your password is not stored as plain text. However, you can set the permissions of the cache directory to `700` to improve security.
 
 
 ## Roadmap
