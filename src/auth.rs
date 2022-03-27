@@ -4,7 +4,7 @@ use librespot_core::{
 use std::io::Write;
 
 /// Prompt the user for its Spotify username and password
-fn ask_user_credentials() -> Result<(String, String), std::io::Error> {
+pub fn ask_user_credentials() -> Result<(String, String), std::io::Error> {
     // Username
     print!("Spotify username: ");
     std::io::stdout().flush()?;

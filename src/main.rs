@@ -1,5 +1,5 @@
-use clap::Parser;
-use librespot_core::{cache::Cache, diffie_hellman::DhLocalKeys};
+use clap::{ArgEnum, Parser};
+use librespot_core::{authentication::Credentials, cache::Cache, diffie_hellman::DhLocalKeys};
 
 mod auth;
 mod net;
@@ -18,6 +18,22 @@ struct Args {
     /// Path to the ZeroConf API on the device web server
     #[clap(default_value = "/")]
     path: String,
+
+    /// The authentication method to use
+    #[clap(short, long, arg_enum, default_value_t)]
+    auth_type: AuthType,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, ArgEnum)]
+enum AuthType {
+    Reusable,
+    Password,
+}
+
+impl Default for AuthType {
+    fn default() -> AuthType {
+        AuthType::Reusable
+    }
 }
 
 fn main() {
@@ -25,19 +41,29 @@ fn main() {
     let args = Args::parse();
     let base_url = format!("http://{}:{}{}", args.ip, args.port, args.path);
 
-    // Get credentials from the cache
-    let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
-    cache_path.push("spotify-connect");
+    // Get credentials
+    let credentials = match args.auth_type {
+        AuthType::Reusable => {
+            let mut cache_path =
+                dirs::cache_dir().expect("Impossible to find the user cache directory.");
+            cache_path.push("spotify-connect");
 
-    let cache = Cache::new(Some(cache_path), None, None)
-        .expect("Impossible to open cache path: {cache_path}");
+            let cache = Cache::new(Some(cache_path), None, None)
+                .expect("Impossible to open cache path: {cache_path}");
 
-    let credentials = match cache.credentials() {
-        Some(credentials) => credentials,
-        None => {
-            // Cache is empty, authenticate to create the credentials
-            auth::create_reusable_credentials(cache)
-                .expect("Getting reusable credentials from spotify failed")
+            match cache.credentials() {
+                Some(credentials) => credentials,
+                None => {
+                    // Cache is empty, authenticate to create the credentials
+                    auth::create_reusable_credentials(cache)
+                        .expect("Getting reusable credentials from spotify failed")
+                }
+            }
+        }
+        AuthType::Password => {
+            let (username, password) =
+                auth::ask_user_credentials().expect("Getting username and password failed");
+            Credentials::with_password(username, password)
         }
     };
 
