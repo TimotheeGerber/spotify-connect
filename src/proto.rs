@@ -138,15 +138,15 @@ mod tests {
 
     // User
     const USERNAME: &'static str = "my_username";
-    const AUTH_DATA: &'static str = "A_135-bytes_long_string::123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~===============================";
+    const AUTH_DATA: &'static str = "A_135-bytes_long_string::123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~================================";
 
     // Remote device
     const DEVICE_ID: &'static str = "ce8d71004f9597141d4b5940bd1bb2dc52a35dae";
     const DEVICE_KEY: &'static str = "U6+5+tIcqTzlX8Z6CA+DDGXgiIB270+D4l1gu4EUyKMS1g4j2JpdLu8xNWkw9uyKcvSvn/nKBCusEzaRIDJXau9GMCR+QdN9Iu2MM0/ME5flWUvOnq+O16mkK2IvD9GY";
 
     // Expected results
-    const BLOB: &'static str = "w76y80SFmb3PIAUvjHsSoMvLEeVrYQ6Xa+g1QBwCSIHwH5pH6KzOvPY1qK/HBnqLcKYuasYsBsvvD/bhYGViZmgF+yiR5glUoaRGqVWDvxMuyTPLuoJpPjFBfOt0MqWQEbzchqvws7au6oO9Y7X1hNhLikDs3dz4w/ZhKen1ElKnDSJuylMwWMibLNiT6Yaiqr/rPpBUChNkObtU87mL+A==";
-    const ENCRYPTED_BLOB: &'static str = "/VHeE0bLLVmNRNLwXRRMHiGvoLe0y9EFU7t0yfMp10W/m36RmsbShZyrMUG+GI9LA4K8epc30Wj9rjTn2INrR+a4C+nvTECaZsbPcdgUL0MJTkWzqFjo326Ev9FKZEhy1i47A9Y94ZRF2erPRSuDuw1QVqacDt/XrFGPWDdb3cI6GINSirtPTdifPcSI7e722eR8Z5XsbaiCOeLbBaFwB8jiHh08wRAKFruwRoT7pO3koXcLHQqbiXtx/vtim+1tvw9J5tuh42jJnf8qyiVtOVeFmT39trU6sDA22ZONZMjPQ73qC30goFbVUIG4wphHxeF8UX2VpKcTxMAn";
+    const BLOB: &'static str = "w76y80SFmb3PIAUvjHsSoMvLEeVrYQ6Xa+g1QBwCSIHwH5pH6KzOvPY1qK/HBnqLcKYuasYsBsvvD/bhYGViZmgF+yiR5glUoaRGqVWDvxMuyTPLuoJpPjFBfOt0MqWQEbzchqvws7au6oO9Y7X1hNhLikDs3dz4w/ZhKen1ElKnDSJuylMwWMibLNiT6YaizY3XE57UhWPqWHzyegqOrA==";
+    const ENCRYPTED_BLOB: &'static str = "/VHeE0bLLVmNRNLwXRRMHiGvoLe0y9EFU7t0yfMp10W/m36RmsbShZyrMUG+GI9LA4K8epc30Wj9rjTn2INrR+a4C+nvTECaZsbPcdgUL0MJTkWzqFjo326Ev9FKZEhy1i47A9Y94ZRF2erPRSuDuw1QVqacDt/XrFGPWDdb3cI6GINSirtPTdifPcSI7e722eR8Z5XsbaiCOeLbBaFwB8jiHh08wRAKFruwRoT7pO3koXcLHQqbiXtx/vtim+1tvw9J5tuh42jJnf8qyiVtOVyuhRfo88A6mw8ow4unauSSE6HpUn0goIFbIx5Fav8u4GQlelmrfgJdg7YN";
 
     #[test]
     fn blob_creation() {
