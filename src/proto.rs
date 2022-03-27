@@ -5,25 +5,44 @@ use hmac::{Hmac, Mac};
 use librespot_core::{authentication::Credentials, diffie_hellman::DhLocalKeys};
 use sha1::{Digest, Sha1};
 
+/// Add a number in the output stream
+///
+/// Numbers are encoded on one or two bytes, according to their value.
+fn write_int(int: u32, out: &mut Vec<u8>) {
+    if int < 0x80 {
+        out.push(int as u8);
+    } else {
+        out.push(0x80 | (int & 0x7f) as u8);
+        out.push((int >> 7) as u8);
+    }
+}
+
+/// Add many bytes to the output stream
+///
+/// The bytes are prefixed by the their length.
+fn write_bytes(bytes: &[u8], out: &mut Vec<u8>) {
+    write_int(bytes.len() as u32, out);
+    out.extend(bytes);
+}
+
 /// Create an encrypted blob with authentication data
 ///
 /// This has been written by reversing the instructions in the `with_blob`
 /// method of `librespot_core::authentication::Credentials` structure.
 pub fn build_blob(credentials: &Credentials, device_id: &str) -> String {
-    let mut blob: Vec<u8> = vec![0x49]; // 'I'
-                                        // username
-    blob.push(credentials.username.len() as u8);
-    blob.extend(credentials.username.as_bytes());
+    let mut blob: Vec<u8> = Vec::new();
+    // 'I'
+    write_int(0x49, &mut blob);
+    // username
+    write_bytes(credentials.username.as_bytes(), &mut blob);
     // 'P'
-    blob.push(0x50);
-    // auth_type STORED_SPOTIFY_CREDENTIALS
-    blob.push(0x01);
+    write_int(0x50, &mut blob);
+    // auth_type
+    write_int(credentials.auth_type as u32, &mut blob);
     // 'Q'
-    blob.push(0x51);
-    // auth_data 135-bytes token
-    blob.push(0x87);
-    blob.push(0x01);
-    blob.extend(&credentials.auth_data);
+    write_int(0x51, &mut blob);
+    // auth_data
+    write_bytes(&credentials.auth_data, &mut blob);
     // Padding
     let n_zeros = 16 - (blob.len() % 16) - 1;
     blob.extend(vec![0; n_zeros]);
