@@ -1,5 +1,5 @@
 use clap::{ArgEnum, Parser};
-use librespot_core::{authentication::Credentials, cache::Cache, diffie_hellman::DhLocalKeys};
+use librespot_core::{cache::Cache, diffie_hellman::DhLocalKeys};
 
 mod auth;
 mod net;
@@ -28,6 +28,7 @@ struct Args {
 enum AuthType {
     Reusable,
     Password,
+    Token,
 }
 
 impl Default for AuthType {
@@ -41,29 +42,31 @@ fn main() {
     let args = Args::parse();
     let base_url = format!("http://{}:{}{}", args.ip, args.port, args.path);
 
+    // Prepare cache
+    let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
+    cache_path.push("spotify-connect");
+
+    let cache = Cache::new(Some(cache_path), None, None)
+        .expect("Impossible to open cache path: {cache_path}");
+
     // Get credentials
     let credentials = match args.auth_type {
         AuthType::Reusable => {
-            let mut cache_path =
-                dirs::cache_dir().expect("Impossible to find the user cache directory.");
-            cache_path.push("spotify-connect");
-
-            let cache = Cache::new(Some(cache_path), None, None)
-                .expect("Impossible to open cache path: {cache_path}");
-
-            match cache.credentials() {
-                Some(credentials) => credentials,
-                None => {
-                    // Cache is empty, authenticate to create the credentials
-                    auth::create_reusable_credentials(cache)
-                        .expect("Getting reusable credentials from spotify failed")
-                }
-            }
+            cache.credentials().unwrap_or_else(|| {
+                // Cache is empty, authenticate to create the credentials
+                auth::create_reusable_credentials(cache)
+                    .expect("Getting reusable credentials from spotify failed")
+            })
         }
         AuthType::Password => {
-            let (username, password) =
-                auth::ask_user_credentials().expect("Getting username and password failed");
-            Credentials::with_password(username, password)
+            auth::ask_user_credentials().expect("Getting username and password failed")
+        }
+        AuthType::Token => {
+            let credentials = cache.credentials().unwrap_or_else(|| {
+                auth::ask_user_credentials().expect("Getting username and password failed")
+            });
+
+            auth::change_to_token_credentials(credentials).expect("Token retrieval failed")
         }
     };
 

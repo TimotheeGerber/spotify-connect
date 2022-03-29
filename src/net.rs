@@ -51,8 +51,7 @@ pub fn add_user(
 
     let v: Value = serde_json::from_str(response.as_str()?)?;
     match v["statusString"].as_str() {
-        Some("ERROR-OK") => Ok(()),
-        Some(err) => Err(err.into()),
+        Some("ERROR-OK") | Some("OK") => Ok(()),
         _ => Err(v.to_string().into()),
     }
 }
