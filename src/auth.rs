@@ -57,6 +57,22 @@ pub fn change_to_token_credentials(
 ) -> Result<Credentials, Box<dyn std::error::Error>> {
     let username = credentials.username.clone();
 
+    // By default, use the clientID of the official Spotify client
+    let token = get_token(credentials, "65b708073fc0480ea92a077233ca87bd", "streaming")?;
+
+    Ok(Credentials {
+        username,
+        auth_type: AuthenticationType::AUTHENTICATION_SPOTIFY_TOKEN,
+        auth_data: token.as_bytes().into(),
+    })
+}
+
+/// Get the authentication token
+pub fn get_token(
+    credentials: Credentials,
+    client_id: &str,
+    scope: &str,
+) -> Result<String, Box<dyn std::error::Error>> {
     let token = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
@@ -66,14 +82,10 @@ pub fn change_to_token_credentials(
                 .await
                 .expect("Impossible to create a Spotify session");
 
-            keymaster::get_token(&session, "65b708073fc0480ea92a077233ca87bd", "streaming")
+            keymaster::get_token(&session, client_id, scope)
                 .await
                 .expect("Impossible to get a token from the Spotify session")
         });
 
-    Ok(Credentials {
-        username,
-        auth_type: AuthenticationType::AUTHENTICATION_SPOTIFY_TOKEN,
-        auth_data: token.access_token.as_bytes().into(),
-    })
+    Ok(token.access_token)
 }

@@ -28,7 +28,8 @@ struct Args {
 enum AuthType {
     Reusable,
     Password,
-    Token,
+    DefaultToken,
+    AccessToken,
 }
 
 impl Default for AuthType {
@@ -41,6 +42,12 @@ fn main() {
     // Parse arguments
     let args = Args::parse();
     let base_url = format!("http://{}:{}{}", args.ip, args.port, args.path);
+    let mut token_type = None;
+
+    // Get device information
+    let device_info = net::get_device_info(&base_url)
+        .unwrap_or_else(|_| panic!("Impossible to get device information from {base_url}"));
+    println!("Found `{}`. Trying to connect...", device_info.remote_name);
 
     // Prepare cache
     let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
@@ -51,7 +58,7 @@ fn main() {
 
     // Get credentials
     let credentials = match args.auth_type {
-        AuthType::Reusable => {
+        AuthType::Reusable | AuthType::AccessToken => {
             cache.credentials().unwrap_or_else(|| {
                 // Cache is empty, authenticate to create the credentials
                 auth::create_reusable_credentials(cache)
@@ -61,7 +68,9 @@ fn main() {
         AuthType::Password => {
             auth::ask_user_credentials().expect("Getting username and password failed")
         }
-        AuthType::Token => {
+        AuthType::DefaultToken => {
+            token_type = Some("default");
+
             let credentials = cache.credentials().unwrap_or_else(|| {
                 auth::ask_user_credentials().expect("Getting username and password failed")
             });
@@ -70,26 +79,40 @@ fn main() {
         }
     };
 
-    // Get device information
-    let device_info = net::get_device_info(&base_url)
-        .unwrap_or_else(|_| panic!("Impossible to get device information from {base_url}"));
-    println!("Found `{}`. Trying to connect...", device_info.remote_name);
+    let (blob, my_public_key) = match args.auth_type {
+        AuthType::Reusable | AuthType::Password | AuthType::DefaultToken => {
+            // Generate the blob
+            let blob = proto::build_blob(&credentials, &device_info.device_id);
 
-    // Generate the blob
-    let blob = proto::build_blob(&credentials, &device_info.device_id);
+            // Encrypt the blob
+            let local_keys = DhLocalKeys::random(&mut rand::thread_rng());
+            let encrypted_blob = proto::encrypt_blob(&blob, &local_keys, &device_info.public_key)
+                .expect("Encryption of credentials failed");
 
-    // Encrypt the blob
-    let local_keys = DhLocalKeys::random(&mut rand::thread_rng());
-    let encrypted_blob = proto::encrypt_blob(&blob, &local_keys, &device_info.public_key)
-        .expect("Encryption of credentials failed");
+            (encrypted_blob, base64::encode(local_keys.public_key()))
+        }
+        AuthType::AccessToken => {
+            token_type = Some("accesstoken");
 
-    // Send the blob
-    let my_public_key = base64::encode(local_keys.public_key());
+            let client_id = device_info.client_id.expect(
+                "To authenticate with an access token, the remote device should provide a clientID",
+            );
+            let scope = device_info.scope.unwrap_or_else(|| "streaming".into());
+
+            let token = auth::get_token(credentials.clone(), &client_id, &scope)
+                .expect("The access token could not be retrieved");
+
+            (token, "".to_string())
+        }
+    };
+
+    // Send the authentication request
     net::add_user(
         &base_url,
         &credentials.username,
-        &encrypted_blob,
+        &blob,
         &my_public_key,
+        token_type,
     )
     .expect("Authentication on the remote device failed");
 
