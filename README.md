@@ -36,6 +36,14 @@ If it is the first time you use `spotify-connect`, your Spotify credentials will
 
 > Reusable credentials are provided by Spotify and are encrypted. Your password is not stored as plain text. However, you can set the permissions of the cache directory to `700` to improve security.
 
+If the default authentication method is not working on your devices, you can try alternative methods with the `--auth-type <AUTH_TYPE>` option.
+
+```shell
+spotify-connect --auth-type access-token <IP> <PORT> [PATH]
+```
+
+Type `spotify-connect --help` to see the list of all authentication methods currently implemented.
+
 
 ## Roadmap
 
