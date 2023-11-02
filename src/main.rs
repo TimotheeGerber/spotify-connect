@@ -3,6 +3,7 @@ use std::io::Write;
 use clap::{ArgEnum, Parser};
 use librespot_core::{authentication::Credentials, cache::Cache};
 use librespot_protocol::authentication::AuthenticationType;
+use mdns_sd::{ServiceDaemon, ServiceEvent};
 
 use spotify_connect_client as client;
 
@@ -44,10 +45,10 @@ impl From<client::AuthType> for AuthType {
 #[clap(version, about)]
 struct Args {
     /// Hostname or IP address of the remote device
-    host_or_ip: String,
+    host_or_ip: Option<String>,
 
     /// Port on which the remote device is listening
-    port: u16,
+    port: Option<u16>,
 
     /// Path to the ZeroConf API on the device web server
     #[clap(default_value = "/")]
@@ -86,6 +87,60 @@ fn main() {
     // Parse arguments
     let args = Args::parse();
 
+    // Forge the base url of the remote device
+    let (host_or_ip, port) = if args.host_or_ip.is_some() && args.port.is_some() {
+        // User provided needed information, use it
+        (args.host_or_ip.unwrap(), args.port.unwrap())
+    } else {
+        // Get the device information from mDNS Service Discovery
+        let mdns = ServiceDaemon::new().expect("Failed to create daemon");
+        let service_type = "_spotify-connect._tcp.local.";
+        let receiver = mdns.browse(service_type).expect("Failed to browse");
+        let (tx, rx) = std::sync::mpsc::channel();
+
+        println!("Looking for Spotify receivers... (with mdns _sportify-connect._tcp.local. service type)");
+
+        std::thread::spawn(move || {
+            let mut spotify_receivers = Vec::new();
+
+            while let Ok(event) = receiver.recv() {
+                match event {
+                    ServiceEvent::ServiceResolved(info) => {
+                        let ip = match info.get_addresses_v4().into_iter().next() {
+                            Some(ip) => ip.clone(),
+                            None => continue,
+                        };
+                        spotify_receivers.push((
+                            info.get_hostname().to_string(),
+                            ip,
+                            info.get_port(),
+                        ));
+                    }
+                    ServiceEvent::SearchStopped(_info) => {
+                        break;
+                    }
+                    _ => {}
+                }
+            }
+            tx.send(spotify_receivers)
+                .expect("error while sending the spotify_receivers back");
+        });
+
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        mdns.stop_browse(service_type)
+            .expect("Failed to stop browsing");
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        mdns.shutdown().unwrap();
+
+        let receivers = rx
+            .recv()
+            .expect("error while receiving the spotify_receivers");
+
+        dbg!(&receivers);
+
+        (receivers[0].1.to_string(), receivers[0].2)
+    };
+
     // Prepare cache
     let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
     cache_path.push("spotify-connect");
@@ -121,8 +176,8 @@ fn main() {
     };
 
     let device_info = client::authenticate(
-        &args.host_or_ip,
-        args.port,
+        &host_or_ip,
+        port,
         &args.path,
         &credentials,
         &args.auth_type.into(),
