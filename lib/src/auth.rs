@@ -2,26 +2,6 @@ use librespot_core::{
     authentication::Credentials, cache::Cache, config::SessionConfig, keymaster, session::Session,
 };
 use librespot_protocol::authentication::AuthenticationType;
-use std::io::Write;
-
-/// Prompt the user for its Spotify username and password
-pub fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
-    // Username
-    print!("Spotify username: ");
-    std::io::stdout().flush()?;
-    let mut username = String::new();
-    std::io::stdin().read_line(&mut username)?;
-    username = username.trim_end().to_string();
-
-    // Password
-    let password = rpassword::prompt_password(&format!("Password for {username}: "))?;
-
-    Ok(Credentials {
-        username,
-        auth_type: AuthenticationType::AUTHENTICATION_USER_PASS,
-        auth_data: password.as_bytes().into(),
-    })
-}
 
 /// Create reusable credentials
 ///
@@ -30,10 +10,8 @@ pub fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
 /// the user authenticate with the username/password couple.
 pub fn create_reusable_credentials(
     cache: Cache,
+    credentials: Credentials,
 ) -> Result<Credentials, Box<dyn std::error::Error>> {
-    // Authenticate with username/password
-    let credentials = ask_user_credentials()?;
-
     let connection = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()

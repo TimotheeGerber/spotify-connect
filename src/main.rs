@@ -1,9 +1,10 @@
-use clap::{ArgEnum, Parser};
-use librespot_core::{cache::Cache, diffie_hellman::DhLocalKeys};
+use std::io::Write;
 
-mod auth;
-mod net;
-mod proto;
+use clap::{ArgEnum, Parser};
+use librespot_core::{authentication::Credentials, cache::Cache, diffie_hellman::DhLocalKeys};
+use librespot_protocol::authentication::AuthenticationType;
+
+use spotify_connect_client::{auth, net, proto};
 
 /// Use the Spotify Connect feature to authenticate yourself on remote devices
 #[derive(Parser, Debug)]
@@ -38,6 +39,25 @@ impl Default for AuthType {
     }
 }
 
+/// Prompt the user for its Spotify username and password
+fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
+    // Username
+    print!("Spotify username: ");
+    std::io::stdout().flush()?;
+    let mut username = String::new();
+    std::io::stdin().read_line(&mut username)?;
+    username = username.trim_end().to_string();
+
+    // Password
+    let password = rpassword::prompt_password(&format!("Password for {username}: "))?;
+
+    Ok(Credentials {
+        username,
+        auth_type: AuthenticationType::AUTHENTICATION_USER_PASS,
+        auth_data: password.as_bytes().into(),
+    })
+}
+
 fn main() {
     // Parse arguments
     let args = Args::parse();
@@ -61,18 +81,19 @@ fn main() {
         AuthType::Reusable | AuthType::AccessToken => {
             cache.credentials().unwrap_or_else(|| {
                 // Cache is empty, authenticate to create the credentials
-                auth::create_reusable_credentials(cache)
+                let credentials = ask_user_credentials().expect("Getting username and password failed");
+                auth::create_reusable_credentials(cache, credentials)
                     .expect("Getting reusable credentials from spotify failed")
             })
         }
         AuthType::Password => {
-            auth::ask_user_credentials().expect("Getting username and password failed")
+            ask_user_credentials().expect("Getting username and password failed")
         }
         AuthType::DefaultToken => {
             token_type = Some("default");
 
             let credentials = cache.credentials().unwrap_or_else(|| {
-                auth::ask_user_credentials().expect("Getting username and password failed")
+                ask_user_credentials().expect("Getting username and password failed")
             });
 
             auth::change_to_token_credentials(credentials).expect("Token retrieval failed")

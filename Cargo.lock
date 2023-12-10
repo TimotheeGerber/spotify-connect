@@ -1045,11 +1045,23 @@ dependencies = [
 name = "spotify-connect"
 version = "0.1.0"
 dependencies = [
- "aes",
- "aes-ctr",
  "base64",
  "clap",
  "dirs",
+ "librespot-core",
+ "librespot-protocol",
+ "rand",
+ "rpassword",
+ "spotify-connect-client",
+]
+
+[[package]]
+name = "spotify-connect-client"
+version = "0.1.0"
+dependencies = [
+ "aes",
+ "aes-ctr",
+ "base64",
  "hex",
  "hmac 0.12.1",
  "librespot-core",
@@ -1057,7 +1069,6 @@ dependencies = [
  "minreq",
  "pbkdf2 0.11.0",
  "rand",
- "rpassword",
  "serde",
  "serde_json",
  "sha-1 0.10.0",
