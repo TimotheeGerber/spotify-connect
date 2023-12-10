@@ -25,18 +25,13 @@ struct Args {
     auth_type: AuthType,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ArgEnum)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, ArgEnum)]
 enum AuthType {
+    #[default]
     Reusable,
     Password,
     DefaultToken,
     AccessToken,
-}
-
-impl Default for AuthType {
-    fn default() -> AuthType {
-        AuthType::Reusable
-    }
 }
 
 /// Prompt the user for its Spotify username and password
@@ -49,7 +44,7 @@ fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
     username = username.trim_end().to_string();
 
     // Password
-    let password = rpassword::prompt_password(&format!("Password for {username}: "))?;
+    let password = rpassword::prompt_password(format!("Password for {username}: "))?;
 
     Ok(Credentials {
         username,

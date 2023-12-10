@@ -101,7 +101,7 @@ pub fn encrypt_blob(
     let remote_device_key = base64::decode(remote_device_key)?;
     let shared_key = local_keys.shared_secret(&remote_device_key);
 
-    let base_key = Sha1::digest(&shared_key);
+    let base_key = Sha1::digest(shared_key);
     let base_key = &base_key[..16];
 
     let checksum_key = {
