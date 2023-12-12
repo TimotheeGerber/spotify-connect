@@ -40,19 +40,33 @@ pub fn add_user(
     let device_id = hex::encode(Sha1::digest("spotify-connect".as_bytes()));
     let login_id = hex::encode(rand::thread_rng().gen::<[u8; 16]>());
 
-    let mut request = minreq::post(base_url)
-        .with_header("Content-Type", "application/x-www-form-urlencoded")
-        .with_param("action", "addUser")
-        .with_param("userName", username)
-        .with_param("blob", blob)
-        .with_param("clientKey", my_public_key)
-        .with_param("deviceId", device_id)
-        .with_param("deviceName", "spotify-connect")
-        .with_param("loginId", login_id);
+    let params = [
+        ("action", "addUser"),
+        ("userName", username),
+        ("blob", blob),
+        ("clientKey", my_public_key),
+        ("deviceId", &device_id),
+        ("deviceName", "spotify-connect"),
+        ("loginId", &login_id),
+    ];
+    let mut body = String::with_capacity(1024);
+    for (i, (k, v)) in params.iter().enumerate() {
+        if i != 0 {
+            body.push('&');
+        }
+        body.push_str(k);
+        body.push('=');
+        body.push_str(&urlencoding::encode(v));
+    }
 
     if let Some(token_type) = token_type {
-        request = request.with_param("tokenType", token_type);
+        body.push_str("&tokenType=");
+        body.push_str(&urlencoding::encode(token_type));
     }
+
+    let request = minreq::post(base_url)
+        .with_header("Content-Type", "application/x-www-form-urlencoded")
+        .with_body(body);
 
     let response = request.send()?;
 
