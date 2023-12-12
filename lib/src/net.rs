@@ -1,21 +1,20 @@
 use rand::Rng;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha1::{Digest, Sha1};
 
-#[derive(Debug, Deserialize)]
+// see <https://developer.spotify.com/documentation/commercial-hardware/implementation/guides/zeroconf>
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DeviceInfo {
     #[serde(rename = "deviceID")]
     pub device_id: String,
-    #[serde(rename = "remoteName")]
     pub remote_name: String,
-    #[serde(rename = "publicKey")]
     pub public_key: String,
-    #[serde(rename = "tokenType")]
-    pub token_type: Option<String>,
-    #[serde(rename = "clientID")]
-    pub client_id: Option<String>,
-    pub scope: Option<String>,
+    pub active_user: Option<String>, // undocumented but useful and returned by both librespot and librespot-java
+    pub token_type: Option<String>,  // required at least as of 2.9.0
+    pub client_id: Option<String>,   // required at least as of 2.9.0
+    pub scope: Option<String>,       // required at least as of 2.9.0
 }
 
 /// Get the necessary information from the remote device
