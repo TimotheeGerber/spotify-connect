@@ -1139,14 +1139,12 @@ dependencies = [
 name = "spotify-connect"
 version = "0.1.0"
 dependencies = [
- "base64",
  "clap",
  "dirs",
  "env_logger",
  "librespot-core",
  "librespot-protocol",
  "log",
- "rand",
  "rpassword",
  "spotify-connect-client",
 ]
@@ -1162,6 +1160,7 @@ dependencies = [
  "hmac 0.12.1",
  "librespot-core",
  "librespot-protocol",
+ "log",
  "minreq",
  "pbkdf2 0.11.0",
  "rand",

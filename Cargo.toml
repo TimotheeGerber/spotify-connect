@@ -10,12 +10,10 @@ path = "lib"
 version = "0.1.0"
 
 [dependencies]
-base64 = "0.13.0"
 clap = { version = "3.1.6", features = ["derive"] }
 dirs = "4.0"
 env_logger = "0.10.1"
 librespot-core = "0.3.1"
 librespot-protocol = "0.3.1"
-log = "0.4.20"
-rand = "0.8.5"
+log = "0.4"
 rpassword = "6.0.1"
