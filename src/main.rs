@@ -128,8 +128,14 @@ fn main() {
     )
     .unwrap_or_else(|e| panic!("authentication failed: {e}"));
 
+    let more_info = match device_info.active_user.as_deref() {
+        Some("") => " (no prior active user)".to_string(),
+        Some(username) => format!(" (was {username})"),
+        None => "".to_string(),
+    };
+
     println!(
-        "🎉 Connected as `{}` on `{}` 🎉",
-        credentials.username, device_info.remote_name
+        "🎉 Connected as `{}` on `{}`{} 🎉",
+        credentials.username, device_info.remote_name, more_info,
     );
 }
