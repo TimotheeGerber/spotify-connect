@@ -11,9 +11,9 @@ version = "0.1.0"
 
 [dependencies]
 clap = { version = "3.1.6", features = ["derive"] }
-dirs = "4.0"
-env_logger = "0.10.1"
+dirs = "4"
+env_logger = "0.10"
 librespot-core = "0.3.1"
 librespot-protocol = "0.3.1"
 log = "0.4"
-rpassword = "6.0.1"
+rpassword = "6"
