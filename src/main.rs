@@ -90,7 +90,7 @@ fn main() {
     let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
     cache_path.push("spotify-connect");
 
-    let cache = Cache::new(Some(cache_path.as_path()), None, None).unwrap_or_else(|e| {
+    let cache = Cache::new(Some(cache_path.as_path()), None, None, None).unwrap_or_else(|e| {
         panic!(
             "Impossible to open cache path {}: {e}",
             cache_path.display()
