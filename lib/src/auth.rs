@@ -14,8 +14,7 @@ pub fn create_reusable_credentials(
 ) -> Result<Credentials, Box<dyn std::error::Error>> {
     let (_session, _credentials) = tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()
-        .unwrap()
+        .build()?
         .block_on(async {
             let store_credentials = true;
             Session::connect(
@@ -58,23 +57,27 @@ pub fn get_token(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let token = tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()
-        .unwrap()
+        .build()?
         .block_on(async {
             let store_credentials = false;
-            let (session, _credentials) = Session::connect(
+            let connect_result: Result<_, Box<dyn std::error::Error>> = Session::connect(
                 SessionConfig::default(),
                 credentials,
                 None,
                 store_credentials,
             )
             .await
-            .expect("Impossible to create a Spotify session");
+            .map_err(|e| format!("Unable to create a Spotify session: {e}").into());
 
-            keymaster::get_token(&session, client_id, scope)
-                .await
-                .expect("Impossible to get a token from the Spotify session")
-        });
+            match connect_result {
+                Ok((session, _credentials)) => keymaster::get_token(&session, client_id, scope)
+                    .await
+                    .map_err(|e| {
+                        format!("Unable to get a token from the Spotify session: {e:?}").into()
+                    }),
+                Err(e) => Err(e),
+            }
+        })?;
 
     Ok(token.access_token)
 }
