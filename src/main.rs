@@ -43,8 +43,8 @@ impl From<client::AuthType> for AuthType {
 #[derive(Parser, Debug)]
 #[clap(version, about)]
 struct Args {
-    /// IP address of the remote device
-    ip: std::net::IpAddr,
+    /// Hostname or IP address of the remote device
+    host_or_ip: String,
 
     /// Port on which the remote device is listening
     port: u16,
@@ -121,7 +121,8 @@ fn main() {
     };
 
     let device_info = client::authenticate(
-        &std::net::SocketAddr::new(args.ip, args.port),
+        &args.host_or_ip,
+        args.port,
         &args.path,
         &credentials,
         &args.auth_type.into(),

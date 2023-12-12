@@ -50,12 +50,13 @@ impl fmt::Display for Error {
 }
 
 pub fn authenticate(
-    sock_addr: &std::net::SocketAddr,
+    host_or_ip: &str,
+    port: u16,
     path: &str,
     credentials: &Credentials,
     auth_type: &AuthType,
 ) -> Result<net::DeviceInfo, Error> {
-    let base_url = format!("http://{}:{}{path}", sock_addr.ip(), sock_addr.port());
+    let base_url = format!("http://{}:{}{path}", host_or_ip, port);
 
     // Get device information
     let device_info = net::get_device_info(&base_url)
