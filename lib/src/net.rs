@@ -13,7 +13,8 @@ pub struct DeviceInfo {
     pub public_key: String,
     pub active_user: Option<String>, // undocumented but useful and returned by both librespot and librespot-java
     pub token_type: Option<String>,  // required at least as of 2.9.0
-    pub client_id: Option<String>,   // required at least as of 2.9.0
+    #[serde(rename = "clientID")]
+    pub client_id: Option<String>, // required at least as of 2.9.0
     pub scope: Option<String>,       // required at least as of 2.9.0
 }
 
