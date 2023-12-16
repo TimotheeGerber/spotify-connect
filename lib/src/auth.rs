@@ -2,26 +2,6 @@ use librespot_core::{
     authentication::Credentials, cache::Cache, config::SessionConfig, keymaster, session::Session,
 };
 use librespot_protocol::authentication::AuthenticationType;
-use std::io::Write;
-
-/// Prompt the user for its Spotify username and password
-pub fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
-    // Username
-    print!("Spotify username: ");
-    std::io::stdout().flush()?;
-    let mut username = String::new();
-    std::io::stdin().read_line(&mut username)?;
-    username = username.trim_end().to_string();
-
-    // Password
-    let password = rpassword::prompt_password(&format!("Password for {username}: "))?;
-
-    Ok(Credentials {
-        username,
-        auth_type: AuthenticationType::AUTHENTICATION_USER_PASS,
-        auth_data: password.as_bytes().into(),
-    })
-}
 
 /// Create reusable credentials
 ///
@@ -30,25 +10,27 @@ pub fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
 /// the user authenticate with the username/password couple.
 pub fn create_reusable_credentials(
     cache: Cache,
+    credentials: Credentials,
 ) -> Result<Credentials, Box<dyn std::error::Error>> {
-    // Authenticate with username/password
-    let credentials = ask_user_credentials()?;
-
-    let connection = tokio::runtime::Builder::new_current_thread()
+    let (_session, _credentials) = tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()
-        .unwrap()
+        .build()?
         .block_on(async {
-            Session::connect(SessionConfig::default(), credentials, Some(cache.clone())).await
-        });
-
-    connection?;
+            let store_credentials = true;
+            Session::connect(
+                SessionConfig::default(),
+                credentials,
+                Some(cache.clone()),
+                store_credentials,
+            )
+            .await
+        })?;
 
     // The reusable credentials are automatically saved in the cache. Reading
     // them back.
     cache
         .credentials()
-        .ok_or_else(|| "There is no reusable credentials saved in cache".into())
+        .ok_or_else(|| "There are no reusable credentials saved in cache".into())
 }
 
 /// Transform existing credentials into token credentials
@@ -75,17 +57,27 @@ pub fn get_token(
 ) -> Result<String, Box<dyn std::error::Error>> {
     let token = tokio::runtime::Builder::new_current_thread()
         .enable_all()
-        .build()
-        .unwrap()
+        .build()?
         .block_on(async {
-            let session = Session::connect(SessionConfig::default(), credentials, None)
-                .await
-                .expect("Impossible to create a Spotify session");
+            let store_credentials = false;
+            let connect_result: Result<_, Box<dyn std::error::Error>> = Session::connect(
+                SessionConfig::default(),
+                credentials,
+                None,
+                store_credentials,
+            )
+            .await
+            .map_err(|e| format!("Unable to create a Spotify session: {e}").into());
 
-            keymaster::get_token(&session, client_id, scope)
-                .await
-                .expect("Impossible to get a token from the Spotify session")
-        });
+            match connect_result {
+                Ok((session, _credentials)) => keymaster::get_token(&session, client_id, scope)
+                    .await
+                    .map_err(|e| {
+                        format!("Unable to get a token from the Spotify session: {e:?}").into()
+                    }),
+                Err(e) => Err(e),
+            }
+        })?;
 
     Ok(token.access_token)
 }

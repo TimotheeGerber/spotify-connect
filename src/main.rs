@@ -1,16 +1,50 @@
-use clap::{ArgEnum, Parser};
-use librespot_core::{cache::Cache, diffie_hellman::DhLocalKeys};
+use std::io::Write;
 
-mod auth;
-mod net;
-mod proto;
+use clap::{ArgEnum, Parser};
+use librespot_core::{authentication::Credentials, cache::Cache};
+use librespot_protocol::authentication::AuthenticationType;
+
+use spotify_connect_client as client;
+
+// repeated here to be able to use ArgEnum without creating a library dependency on clap
+#[derive(Clone, Debug, Default, ArgEnum)]
+pub enum AuthType {
+    #[default]
+    Reusable,
+    Password,
+    DefaultToken,
+    AccessToken,
+}
+
+impl From<AuthType> for client::AuthType {
+    fn from(value: AuthType) -> Self {
+        match value {
+            AuthType::Reusable => client::AuthType::Reusable,
+            AuthType::Password => client::AuthType::Password,
+            AuthType::DefaultToken => client::AuthType::DefaultToken,
+            AuthType::AccessToken => client::AuthType::AccessToken,
+        }
+    }
+}
+
+// included here so that the two types stay in sync
+impl From<client::AuthType> for AuthType {
+    fn from(value: client::AuthType) -> Self {
+        match value {
+            client::AuthType::Reusable => AuthType::Reusable,
+            client::AuthType::Password => AuthType::Password,
+            client::AuthType::DefaultToken => AuthType::DefaultToken,
+            client::AuthType::AccessToken => AuthType::AccessToken,
+        }
+    }
+}
 
 /// Use the Spotify Connect feature to authenticate yourself on remote devices
 #[derive(Parser, Debug)]
 #[clap(version, about)]
 struct Args {
-    /// IP address of the remote device
-    ip: std::net::IpAddr,
+    /// Hostname or IP address of the remote device
+    host_or_ip: String,
 
     /// Port on which the remote device is listening
     port: u16,
@@ -24,100 +58,85 @@ struct Args {
     auth_type: AuthType,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, ArgEnum)]
-enum AuthType {
-    Reusable,
-    Password,
-    DefaultToken,
-    AccessToken,
-}
+/// Prompt the user for its Spotify username and password
+fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
+    // Username
+    print!("Spotify username: ");
+    std::io::stdout().flush()?;
+    let mut username = String::new();
+    std::io::stdin().read_line(&mut username)?;
+    username = username.trim_end().to_string();
 
-impl Default for AuthType {
-    fn default() -> AuthType {
-        AuthType::Reusable
-    }
+    // Password
+    let password = rpassword::prompt_password(format!("Password for {username}: "))?;
+
+    Ok(Credentials {
+        username,
+        auth_type: AuthenticationType::AUTHENTICATION_USER_PASS,
+        auth_data: password.as_bytes().into(),
+    })
 }
 
 fn main() {
+    env_logger::Builder::new()
+        .filter_level(log::LevelFilter::Info)
+        .parse_default_env()
+        .init();
+
     // Parse arguments
     let args = Args::parse();
-    let base_url = format!("http://{}:{}{}", args.ip, args.port, args.path);
-    let mut token_type = None;
-
-    // Get device information
-    let device_info = net::get_device_info(&base_url)
-        .unwrap_or_else(|_| panic!("Impossible to get device information from {base_url}"));
-    println!("Found `{}`. Trying to connect...", device_info.remote_name);
 
     // Prepare cache
     let mut cache_path = dirs::cache_dir().expect("Impossible to find the user cache directory.");
     cache_path.push("spotify-connect");
 
-    let cache = Cache::new(Some(cache_path), None, None)
-        .expect("Impossible to open cache path: {cache_path}");
+    let cache = Cache::new(Some(cache_path.as_path()), None, None, None).unwrap_or_else(|e| {
+        panic!(
+            "Impossible to open cache path {}: {e}",
+            cache_path.display()
+        )
+    });
 
     // Get credentials
     let credentials = match args.auth_type {
         AuthType::Reusable | AuthType::AccessToken => {
             cache.credentials().unwrap_or_else(|| {
                 // Cache is empty, authenticate to create the credentials
-                auth::create_reusable_credentials(cache)
-                    .expect("Getting reusable credentials from spotify failed")
+                let credentials =
+                    ask_user_credentials().expect("Getting username and password failed");
+                client::auth::create_reusable_credentials(cache, credentials).unwrap_or_else(|e| {
+                    panic!("Getting reusable credentials from spotify failed: {e}")
+                })
             })
         }
-        AuthType::Password => {
-            auth::ask_user_credentials().expect("Getting username and password failed")
-        }
+        AuthType::Password => ask_user_credentials().expect("Getting username and password failed"),
         AuthType::DefaultToken => {
-            token_type = Some("default");
-
             let credentials = cache.credentials().unwrap_or_else(|| {
-                auth::ask_user_credentials().expect("Getting username and password failed")
+                ask_user_credentials().expect("Getting username and password failed")
             });
 
-            auth::change_to_token_credentials(credentials).expect("Token retrieval failed")
+            client::auth::change_to_token_credentials(credentials)
+                .unwrap_or_else(|e| panic!("Token retrieval failed: {e}"))
         }
     };
 
-    let (blob, my_public_key) = match args.auth_type {
-        AuthType::Reusable | AuthType::Password | AuthType::DefaultToken => {
-            // Generate the blob
-            let blob = proto::build_blob(&credentials, &device_info.device_id);
-
-            // Encrypt the blob
-            let local_keys = DhLocalKeys::random(&mut rand::thread_rng());
-            let encrypted_blob = proto::encrypt_blob(&blob, &local_keys, &device_info.public_key)
-                .expect("Encryption of credentials failed");
-
-            (encrypted_blob, base64::encode(local_keys.public_key()))
-        }
-        AuthType::AccessToken => {
-            token_type = Some("accesstoken");
-
-            let client_id = device_info.client_id.expect(
-                "To authenticate with an access token, the remote device should provide a clientID",
-            );
-            let scope = device_info.scope.unwrap_or_else(|| "streaming".into());
-
-            let token = auth::get_token(credentials.clone(), &client_id, &scope)
-                .expect("The access token could not be retrieved");
-
-            (token, "".to_string())
-        }
-    };
-
-    // Send the authentication request
-    net::add_user(
-        &base_url,
-        &credentials.username,
-        &blob,
-        &my_public_key,
-        token_type,
+    let device_info = client::authenticate(
+        &args.host_or_ip,
+        args.port,
+        &args.path,
+        &credentials,
+        &args.auth_type.into(),
     )
-    .expect("Authentication on the remote device failed");
+    .unwrap_or_else(|e| panic!("authentication failed: {e}"));
+
+    let more_info = match device_info.active_user.as_deref() {
+        Some("") => " (no prior active user)".to_string(),
+        Some(username) => format!(" (was {username})"),
+        None => "".to_string(),
+    };
 
     println!(
-        "🎉 Connected as `{}` on `{}` 🎉",
-        credentials.username, device_info.remote_name
+        "🎉 Connected as `{}` on `{}`{} 🎉",
+        credentials.username, device_info.remote_name, more_info,
     );
 }
