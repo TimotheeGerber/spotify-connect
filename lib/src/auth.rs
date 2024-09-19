@@ -1,29 +1,22 @@
 use librespot_core::{
-    authentication::Credentials, cache::Cache, config::SessionConfig, keymaster, session::Session,
+    authentication::Credentials, cache::Cache, config::SessionConfig, session::Session,
 };
 use librespot_protocol::authentication::AuthenticationType;
 
 /// Create reusable credentials
 ///
 /// Reusable credentials are provided by Spotify. There are given back as
-/// welcome data when establishing a new authenticated connection. Even when
-/// the user authenticate with the username/password couple.
+/// welcome data when establishing a new authenticated connection.
 pub fn create_reusable_credentials(
     cache: Cache,
     credentials: Credentials,
 ) -> Result<Credentials, Box<dyn std::error::Error>> {
-    let (_session, _credentials) = tokio::runtime::Builder::new_current_thread()
+    tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?
         .block_on(async {
-            let store_credentials = true;
-            Session::connect(
-                SessionConfig::default(),
-                credentials,
-                Some(cache.clone()),
-                store_credentials,
-            )
-            .await
+            let session = Session::new(SessionConfig::default(), Some(cache.clone()));
+            session.connect(credentials, true).await
         })?;
 
     // The reusable credentials are automatically saved in the cache. Reading
@@ -59,22 +52,19 @@ pub fn get_token(
         .enable_all()
         .build()?
         .block_on(async {
-            let store_credentials = false;
-            let connect_result: Result<_, Box<dyn std::error::Error>> = Session::connect(
-                SessionConfig::default(),
-                credentials,
-                None,
-                store_credentials,
-            )
-            .await
-            .map_err(|e| format!("Unable to create a Spotify session: {e}").into());
+            let session = Session::new(SessionConfig::default(), None);
+            session.set_client_id(client_id);
+            let connection_result: Result<(), String> = session
+                .connect(credentials, false)
+                .await
+                .map_err(|e| format!("Unable to create a Spotify session: {e}"));
 
-            match connect_result {
-                Ok((session, _credentials)) => keymaster::get_token(&session, client_id, scope)
+            match connection_result {
+                Ok(()) => session
+                    .token_provider()
+                    .get_token(scope)
                     .await
-                    .map_err(|e| {
-                        format!("Unable to get a token from the Spotify session: {e:?}").into()
-                    }),
+                    .map_err(|e| format!("Unable to get a token from the Spotify session: {e:?}")),
                 Err(e) => Err(e),
             }
         })?;

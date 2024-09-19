@@ -71,7 +71,7 @@ fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
     let password = rpassword::prompt_password(format!("Password for {username}: "))?;
 
     Ok(Credentials {
-        username,
+        username: Some(username),
         auth_type: AuthenticationType::AUTHENTICATION_USER_PASS,
         auth_data: password.as_bytes().into(),
     })
@@ -136,7 +136,7 @@ fn main() {
     };
 
     println!(
-        "🎉 Connected as `{}` on `{}`{} 🎉",
+        "🎉 Connected as `{:?}` on `{}`{} 🎉",
         credentials.username, device_info.remote_name, more_info,
     );
 }

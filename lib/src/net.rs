@@ -32,7 +32,7 @@ pub fn get_device_info(base_url: &str) -> Result<DeviceInfo, Box<dyn std::error:
 /// Authenticate on the remote device thanks to the encrypted blob
 pub fn add_user(
     base_url: &str,
-    username: &str,
+    username: &Option<String>,
     blob: &str,
     my_public_key: &str,
     token_type: Option<&str>,
@@ -42,7 +42,7 @@ pub fn add_user(
 
     let params = [
         ("action", "addUser"),
-        ("userName", username),
+        ("userName", &username.clone().unwrap_or_default()),
         ("blob", blob),
         ("clientKey", my_public_key),
         ("deviceId", &device_id),

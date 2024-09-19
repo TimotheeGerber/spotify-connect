@@ -34,7 +34,10 @@ pub fn build_blob(credentials: &Credentials, device_id: &str) -> String {
     // 'I'
     write_int(0x49, &mut blob);
     // username
-    write_bytes(credentials.username.as_bytes(), &mut blob);
+    write_bytes(
+        credentials.username.clone().unwrap_or_default().as_bytes(),
+        &mut blob,
+    );
     // 'P'
     write_int(0x50, &mut blob);
     // auth_type
@@ -59,7 +62,7 @@ pub fn build_blob(credentials: &Credentials, device_id: &str) -> String {
         let mut key = [0u8; 24];
         pbkdf2::pbkdf2::<Hmac<Sha1>>(
             &secret,
-            credentials.username.as_bytes(),
+            credentials.username.clone().unwrap_or_default().as_bytes(),
             0x100,
             &mut key[0..20],
         );
