@@ -7,6 +7,37 @@ pub mod auth;
 pub mod net;
 pub mod proto;
 
+pub const SPOTIFY_CLIENT_ID: &str = "65b708073fc0480ea92a077233ca87bd";
+
+pub static OAUTH_SCOPES: &[&str] = &[
+    "app-remote-control",
+    "playlist-modify",
+    "playlist-modify-private",
+    "playlist-modify-public",
+    "playlist-read",
+    "playlist-read-collaborative",
+    "playlist-read-private",
+    "streaming",
+    "ugc-image-upload",
+    "user-follow-modify",
+    "user-follow-read",
+    "user-library-modify",
+    "user-library-read",
+    "user-modify",
+    "user-modify-playback-state",
+    "user-modify-private",
+    "user-personalized",
+    "user-read-birthdate",
+    "user-read-currently-playing",
+    "user-read-email",
+    "user-read-play-history",
+    "user-read-playback-position",
+    "user-read-playback-state",
+    "user-read-private",
+    "user-read-recently-played",
+    "user-top-read",
+];
+
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum AuthType {
     #[default]
@@ -14,6 +45,7 @@ pub enum AuthType {
     Password,
     DefaultToken,
     AccessToken,
+    OAuth,
 }
 
 #[derive(Debug)]
@@ -64,7 +96,7 @@ pub fn authenticate(
     info!("Found `{}`. Trying to connect...", device_info.remote_name);
 
     let (blob, my_public_key) = match auth_type {
-        AuthType::Reusable | AuthType::Password | AuthType::DefaultToken => {
+        AuthType::Reusable | AuthType::Password | AuthType::OAuth | AuthType::DefaultToken => {
             // Generate the blob
             let blob = proto::build_blob(credentials, &device_info.device_id);
 
@@ -90,7 +122,7 @@ pub fn authenticate(
     };
 
     let token_type = match auth_type {
-        AuthType::Reusable | AuthType::Password => None,
+        AuthType::Reusable | AuthType::Password | AuthType::OAuth => None,
         AuthType::DefaultToken => Some("default"),
         AuthType::AccessToken => Some("accesstoken"),
     };

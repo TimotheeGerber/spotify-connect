@@ -14,6 +14,7 @@ pub enum AuthType {
     Password,
     DefaultToken,
     AccessToken,
+    OAuth,
 }
 
 impl From<AuthType> for client::AuthType {
@@ -23,6 +24,7 @@ impl From<AuthType> for client::AuthType {
             AuthType::Password => client::AuthType::Password,
             AuthType::DefaultToken => client::AuthType::DefaultToken,
             AuthType::AccessToken => client::AuthType::AccessToken,
+            AuthType::OAuth => client::AuthType::OAuth,
         }
     }
 }
@@ -35,6 +37,7 @@ impl From<client::AuthType> for AuthType {
             client::AuthType::Password => AuthType::Password,
             client::AuthType::DefaultToken => AuthType::DefaultToken,
             client::AuthType::AccessToken => AuthType::AccessToken,
+            client::AuthType::OAuth => AuthType::OAuth,
         }
     }
 }
@@ -77,6 +80,22 @@ fn ask_user_credentials() -> Result<Credentials, std::io::Error> {
     })
 }
 
+// Ask the user to authenticate with OAuth flow
+fn ask_user_to_make_oauth_flow() -> Credentials {
+    let access_token = match librespot_oauth::get_access_token(
+        client::SPOTIFY_CLIENT_ID,
+        &format!("http://127.0.0.1:8910/login"),
+        client::OAUTH_SCOPES.to_vec(),
+    ) {
+        Ok(token) => token.access_token,
+        Err(e) => {
+            eprintln!("Failed to get Spotify access token: {e}");
+            std::process::exit(1);
+        }
+    };
+    Credentials::with_access_token(access_token)
+}
+
 fn main() {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Info)
@@ -102,8 +121,7 @@ fn main() {
         AuthType::Reusable | AuthType::AccessToken => {
             cache.credentials().unwrap_or_else(|| {
                 // Cache is empty, authenticate to create the credentials
-                let credentials =
-                    ask_user_credentials().expect("Getting username and password failed");
+                let credentials = ask_user_to_make_oauth_flow();
                 client::auth::create_reusable_credentials(cache, credentials).unwrap_or_else(|e| {
                     panic!("Getting reusable credentials from spotify failed: {e}")
                 })
@@ -111,13 +129,14 @@ fn main() {
         }
         AuthType::Password => ask_user_credentials().expect("Getting username and password failed"),
         AuthType::DefaultToken => {
-            let credentials = cache.credentials().unwrap_or_else(|| {
-                ask_user_credentials().expect("Getting username and password failed")
-            });
+            let credentials = cache
+                .credentials()
+                .unwrap_or_else(ask_user_to_make_oauth_flow);
 
             client::auth::change_to_token_credentials(credentials)
                 .unwrap_or_else(|e| panic!("Token retrieval failed: {e}"))
         }
+        AuthType::OAuth => ask_user_to_make_oauth_flow(),
     };
 
     let device_info = client::authenticate(

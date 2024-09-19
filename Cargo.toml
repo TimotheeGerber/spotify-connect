@@ -14,6 +14,7 @@ clap = { version = "3.1.6", features = ["derive"] }
 dirs = "4"
 env_logger = "0.10"
 librespot-core = { git = "https://github.com/librespot-org/librespot", rev = "fb5c0efdd65d87f1f506b9198227d64370b69f18" }
+librespot-oauth = { git = "https://github.com/librespot-org/librespot", rev = "fb5c0efdd65d87f1f506b9198227d64370b69f18" }
 librespot-protocol = { git = "https://github.com/librespot-org/librespot", rev = "fb5c0efdd65d87f1f506b9198227d64370b69f18" }
 log = "0.4"
 rpassword = "6"

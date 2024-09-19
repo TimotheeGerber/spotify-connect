@@ -32,7 +32,7 @@ The following `avahi` command should provide everything needed:
 avahi-browse --resolve _spotify-connect._tcp
 ```
 
-If it is the first time you use `spotify-connect`, your Spotify credentials will be asked (username/password). Reusable credentials will be automatically cached for future `spotify-connect` calls. On Linux, the credentials should be cached in `$HOME/.cache/spotify-connect/credentials.json`.
+If it is the first time you use `spotify-connect`, your Spotify credentials will be asked in a OAuth flow. You have to open the given URL into your browser, authenticate on the official Spotify website (if you are not already logged) and accept the demand. Reusable credentials will be automatically cached for future `spotify-connect` calls. On Linux, the credentials should be cached in `$HOME/.cache/spotify-connect/credentials.json`.
 
 > Reusable credentials are provided by Spotify and are encrypted. Your password is not stored as plain text. However, you can set the permissions of the cache directory to `700` to improve security.
 
@@ -43,6 +43,8 @@ spotify-connect --auth-type access-token <IP> <PORT> [PATH]
 ```
 
 Type `spotify-connect --help` to see the list of all authentication methods currently implemented.
+
+> Note that Spotify has deprecated the username/password flow. Please, consider using the OAuth flow instead.
 
 
 ## Roadmap

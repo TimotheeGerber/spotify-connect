@@ -3,6 +3,8 @@ use librespot_core::{
 };
 use librespot_protocol::authentication::AuthenticationType;
 
+use crate::SPOTIFY_CLIENT_ID;
+
 /// Create reusable credentials
 ///
 /// Reusable credentials are provided by Spotify. There are given back as
@@ -33,7 +35,7 @@ pub fn change_to_token_credentials(
     let username = credentials.username.clone();
 
     // By default, use the clientID of the official Spotify client
-    let token = get_token(credentials, "65b708073fc0480ea92a077233ca87bd", "streaming")?;
+    let token = get_token(credentials, SPOTIFY_CLIENT_ID, "streaming")?;
 
     Ok(Credentials {
         username,

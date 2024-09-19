@@ -2420,6 +2420,7 @@ dependencies = [
  "dirs",
  "env_logger",
  "librespot-core",
+ "librespot-oauth",
  "librespot-protocol",
  "log",
  "rpassword",
